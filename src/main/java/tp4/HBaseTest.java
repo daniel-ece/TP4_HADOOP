@@ -3,6 +3,7 @@ package tp4;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -22,6 +23,7 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
+
 public class HBaseTest {
 
     private static Configuration conf = null;
@@ -30,6 +32,7 @@ public class HBaseTest {
      */
     static {
         conf = HBaseConfiguration.create();
+        conf.addResource(new Path("/etc/hbase/conf/hbase-site.xml"));
     }
 
     /**
@@ -85,6 +88,52 @@ public class HBaseTest {
     }
 
     /**
+     * Put a new record
+     */
+    public static void addNewEntry(String tableName) throws Exception {
+        Scanner s = new Scanner(System.in);
+
+        System.out.print("Name (ID): ");
+        String id = s.nextLine();
+
+        System.out.print("Gender: ");
+        String gender = s.nextLine();
+
+        System.out.print("Age: ");
+        String age = s.nextLine();
+
+        System.out.print("Address: ");
+        String address = s.nextLine();
+
+        System.out.print("Mail: ");
+        String mail = s.nextLine();
+
+        System.out.print("Tel: ");
+        String tel = s.nextLine();
+
+        System.out.print("Others information: ");
+        String information = s.nextLine();
+
+
+        System.out.print("Your best friend ? ");
+        String bff = s.nextLine();
+
+        System.out.println("Other friends ? (If you have more than one, write it separating them by ';') ");
+        String otherFriends[] = s.nextLine().split(";");
+
+        HBaseTest.addRecord(tableName, id, "info", "gender", gender);
+        HBaseTest.addRecord(tableName, id, "info", "age", age);
+        HBaseTest.addRecord(tableName, id, "info", "address", address);
+        HBaseTest.addRecord(tableName, id, "info", "mail", mail);
+        HBaseTest.addRecord(tableName, id, "info", "tel", tel);
+        HBaseTest.addRecord(tableName, id, "info", "information", information);
+
+        HBaseTest.addRecord(tableName, id, "friends", "bff", bff);
+        for(int i=0; i<otherFriends.length; i++) {
+            HBaseTest.addRecord(tableName, id, "friends", "others"+i, otherFriends[i]);
+        }
+    }
+    /**
      * Delete a row
      */
     public static void delRecord(String tableName, String rowKey)
@@ -100,8 +149,12 @@ public class HBaseTest {
     /**
      * Get a row
      */
-    public static void getOneRecord (String tableName, String rowKey) throws IOException{
+    public static void getOneRecord (String tableName) throws IOException{
         HTable table = new HTable(conf, tableName);
+        String rowKey;
+        Scanner s = new Scanner(System.in); //read in console
+        System.out.print("ID : ");
+        rowKey = s.nextLine();
         Get get = new Get(rowKey.getBytes());
         Result rs = table.get(get);
         for(KeyValue kv : rs.raw()){
@@ -128,6 +181,7 @@ public class HBaseTest {
                     System.out.print(kv.getTimestamp() + " ");
                     System.out.println(new String(kv.getValue()));
                 }
+                System.out.println();
             }
         } catch (IOException e){
             e.printStackTrace();
@@ -135,32 +189,57 @@ public class HBaseTest {
     }
 
     public static void main(String[] agrs) {
+
+        Scanner s = new Scanner(System.in); //read in console
+        String choice = "0"; // choice of the user
         try {
-            String tablename = "scores";
-            String[] familys = { "grade", "course" };
+            String tablename = "mle";
+            String[] familys = { "info", "friends" };
             HBaseTest.createTable(tablename, familys);
 
-            // add record zkb
-            HBaseTest.addRecord(tablename, "zkb", "grade", "", "5");
-            HBaseTest.addRecord(tablename, "zkb", "course", "", "90");
-            HBaseTest.addRecord(tablename, "zkb", "course", "math", "97");
-            HBaseTest.addRecord(tablename, "zkb", "course", "art", "87");
-            // add record baoniu
-            HBaseTest.addRecord(tablename, "baoniu", "grade", "", "4");
-            HBaseTest.addRecord(tablename, "baoniu", "course", "math", "89");
+            //REPL to fill up the database
+            while(!choice.equals("4")) {
+                System.out.println("--- Social network with HBase ---");
+                System.out.println("1. Add record");
+                System.out.println("2. Show one record");
+                System.out.println("3. Show all records");
+                System.out.println("4. Exit\n");
 
-            System.out.println("===========get one record========");
-            HBaseTest.getOneRecord(tablename, "zkb");
+                System.out.print("Your choice : ");
 
-            System.out.println("===========show all record========");
-            HBaseTest.getAllRecord(tablename);
+                choice = s.nextLine();
 
-            System.out.println("===========del one record========");
-            HBaseTest.delRecord(tablename, "baoniu");
-            HBaseTest.getAllRecord(tablename);
+                switch (choice) {
+                    //1. Add record
+                    case "1":
+                        System.out.print(String.format("\033[H\033[2J")); //clear bash
+                        System.out.println("--- Add record ---\n");
+                        HBaseTest.addNewEntry(tablename);
+                        System.out.println();
+                        break;
+                    //2. Show one record
+                    case "2":
+                        System.out.print(String.format("\033[H\033[2J")); //clear bash
+                        System.out.println("--- Get one record ---\n");
+                        HBaseTest.getOneRecord(tablename);
+                        System.out.println();
+                        break;
+                    //3. Show all records
+                    case "3":
+                        System.out.print(String.format("\033[H\033[2J")); //clear bash
+                        System.out.println("---  All records  ---\n");
+                        HBaseTest.getAllRecord(tablename);
+                        System.out.println();
+                        break;
+                    case "4":
+                        break;
+                    default:
+                        System.out.print(String.format("\033[H\033[2J")); //clear bash
+                        System.out.println("Invalid choice, try again !");
+                        break;
+                }
+            }
 
-            System.out.println("===========show all record========");
-            HBaseTest.getAllRecord(tablename);
         } catch (Exception e) {
             e.printStackTrace();
         }
